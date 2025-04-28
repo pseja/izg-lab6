@@ -8,6 +8,8 @@ uniform mat4 proj;
 // output for fragment shader
 flat out int export_block_id;
 
+out highp vec2 vCoord;
+
 vec3 rotateAroundX(vec3 point, float angle)
 {
     float s = sin(angle);
@@ -61,6 +63,8 @@ void main(){
         pos[i] = float((indices[local_vertex_id] >> i) & 1u);
     }
 
+    vCoord = pos.xy;
+
     vec3 scale;
     vec3 offset;
     vec3 final_pos;
@@ -97,7 +101,7 @@ void main(){
         offset = vec3(0.0, -1.0, 1.0);
         final_pos = scaled_pos + offset;
     }
-    // left
+    // right
     else if (block_id == 4)
     {
         scale = vec3(1.0, 1.0, 0.0);
@@ -106,7 +110,7 @@ void main(){
         offset = vec3(-1.0, 0.0, 1.0);
         final_pos = scaled_pos + offset;
     }
-    // right
+    // left
     else if (block_id == 5)
     {
         scale = vec3(1.0, 1.0, 0.0);
@@ -126,39 +130,89 @@ void main(){
 precision highp float;
 precision highp float;
 
+uniform vec2 iResolution;
+uniform float iTime;
+
 out highp vec4 fColor;
+in highp vec2 vCoord;
 
 flat in int export_block_id;
 
+bool amIInDot(vec2 point, vec2 dot_center, float radius)
+{
+    float _distance = distance(point, dot_center);
+    return _distance <= radius;
+}
+
+// https://iquilezles.org/articles/palettes/
+vec3 palette1(in float t)
+{
+    vec3 a = vec3(0.5, 0.5, 0.5);
+    vec3 b = vec3(0.5, 0.5, 0.5);
+    vec3 c = vec3(1.0, 1.0, 1.0);
+    vec3 d = vec3(0.0, 0.33, 0.67);
+
+    return a + b * cos(6.283185 * (c * t + d));
+}
+
 void main()
 {
+    float dot_radius = 0.1;
+    bool in_dot = false;
+
+    // front
     if (export_block_id == 0)
     {
-        fColor = vec4(1.0, 0.0, 0.0, 1.0);
-    } 
+        in_dot = amIInDot(vCoord, vec2(0.5, 0.5), dot_radius);
+    }
+    // back
     else if (export_block_id == 1)
     {
-        fColor = vec4(0.0, 1.0, 0.0, 1.0);
+        in_dot = amIInDot(vCoord, vec2(0.25, 0.25), dot_radius) ||
+                 amIInDot(vCoord, vec2(0.25, 0.50), dot_radius) ||
+                 amIInDot(vCoord, vec2(0.25, 0.75), dot_radius) ||
+                 amIInDot(vCoord, vec2(0.75, 0.25), dot_radius) ||
+                 amIInDot(vCoord, vec2(0.75, 0.50), dot_radius) ||
+                 amIInDot(vCoord, vec2(0.75, 0.75), dot_radius);
     }
+    // up
     else if (export_block_id == 2)
     {
-        fColor = vec4(0.0, 0.0, 1.0, 1.0);
+        in_dot = amIInDot(vCoord, vec2(0.25, 0.25), dot_radius) ||
+                 amIInDot(vCoord, vec2(0.25, 0.75), dot_radius) ||
+                 amIInDot(vCoord, vec2(0.75, 0.25), dot_radius) ||
+                 amIInDot(vCoord, vec2(0.75, 0.75), dot_radius);
     }
+    // down
     else if (export_block_id == 3)
     {
-        fColor = vec4(1.0, 1.0, 0.0, 1.0);
+        in_dot = amIInDot(vCoord, vec2(0.25, 0.25), dot_radius) ||
+                 amIInDot(vCoord, vec2(0.50, 0.50), dot_radius) ||
+                 amIInDot(vCoord, vec2(0.75, 0.75), dot_radius);
     }
+    // right
     else if (export_block_id == 4)
     {
-        fColor = vec4(1.0, 0.0, 1.0, 1.0);
+        in_dot = amIInDot(vCoord, vec2(0.25, 0.25), dot_radius) ||
+                 amIInDot(vCoord, vec2(0.25, 0.75), dot_radius) ||
+                 amIInDot(vCoord, vec2(0.50, 0.50), dot_radius) ||
+                 amIInDot(vCoord, vec2(0.75, 0.25), dot_radius) ||
+                 amIInDot(vCoord, vec2(0.75, 0.75), dot_radius);
     }
+    // left
     else if (export_block_id == 5)
     {
-        fColor = vec4(0.0, 1.0, 1.0, 1.0);
+        in_dot = amIInDot(vCoord, vec2(0.25, 0.25), dot_radius) ||
+                 amIInDot(vCoord, vec2(0.75, 0.75), dot_radius);
+    }
+
+    if (in_dot)
+    {
+        fColor = vec4(palette1(iTime), 1.0);
     }
     else
     {
-        fColor = vec4(0.0, 1.0, 0.0, 1.0);
+        fColor = vec4(0.0, 0.0, 0.0, 1.0);
     }
 }
 #endif
